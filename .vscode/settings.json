@@ -1,0 +1,7 @@
+{
+    "python.testing.pytestArgs": [
+        "storre"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
+}
