@@ -16,9 +16,9 @@ DATABASES = {
     'default': dj_database_url.config()
 }
 
-REDISCLOUD_URL = os.environ['REDIS_URL']
+REDIS_URL = os.environ['REDISCLOUD_URL']
 
-CELERY_BROKER_URL = REDISCLOUD_URL
+CELERY_BROKER_URL = REDIS_URL
 
 EMAIL_HOST = os.environ['MAILGUN_SMTP_SERVER']
 EMAIL_HOST_USER = os.environ['MAILGUN_SMTP_LOGIN']
