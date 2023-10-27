@@ -27,6 +27,7 @@ djangorestframework==3.14.0
 djangorestframework-simplejwt==5.3.0
 djoser==2.2.0
 drf-nested-routers==0.93.4
+drf-yasg==1.21.7
 Flask==3.0.0
 Flask-BasicAuth==0.2.0
 Flask-Cors==4.0.0
@@ -37,6 +38,7 @@ greenlet==3.0.0
 gunicorn==21.2.0
 humanize==4.8.0
 idna==3.4
+inflection==0.5.1
 iniconfig==2.0.0
 itsdangerous==2.1.2
 Jinja2==3.1.2
@@ -60,7 +62,8 @@ pytest-django==4.5.2
 python-dateutil==2.8.2
 python3-openid==3.2.0
 pytz==2023.3.post1
-#pywin32==306
+# pywin32==306
+PyYAML==6.0.1
 pyzmq==25.1.1
 redis==5.0.1
 requests==2.31.0
@@ -73,6 +76,7 @@ sqlparse==0.4.4
 tornado==6.3.3
 typing_extensions==4.8.0
 tzdata==2023.3
+uritemplate==4.1.1
 urllib3==2.0.6
 vine==5.0.0
 wcwidth==0.2.8
