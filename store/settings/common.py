@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "debug_toolbar",
     'rest_framework',
     'djoser',
+    'drf_yasg',
     'playground',
     'storre',
     'core',

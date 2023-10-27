@@ -13,7 +13,7 @@ from .models import Product, Collection,OrderItem, Review, Cart, CartItem,Custom
 from .serializers import ProductSerializers, CollectionSerializers, ReviewSerializers, CartSerializers,CartItemSerializers,AddCartItemSerializers,UpdateCartItemSerializers,CustomerSerializers,OrderSerializers,CreateOrderSerializers,UpdateOrderSerializers,ProductImageSerializers
 from .filters import ProductFilter
 from .pagination import DefaultPagination
-from.permissions import IsAdminOrReadOnly
+from .permissions import IsAdminOrReadOnly
 
 
 class ProductViewset(ModelViewSet):
@@ -144,11 +144,14 @@ class CartItemViewSet(ModelViewSet):
         return CartItemSerializers
     
     def get_serializer_context(self):
+        cart_id = self.kwargs['cart_pk']
+        if not Cart.objects.filter(pk=cart_id).exists():
+            return Response('No cart_id found' )
         return {'cart_id': self.kwargs['cart_pk']}
     
 
     def get_queryset(self):
-        return CartItem.objects.select_related('product').filter(cart_id=self.kwargs['cart_pk'])
+        return CartItem.objects.select_related('cart','product').filter(cart_id=self.kwargs['cart_pk'])
     
 class CustomerViewSet(CreateModelMixin,RetrieveModelMixin,UpdateModelMixin,GenericViewSet):
     queryset = Customer.objects.all()
@@ -199,6 +202,7 @@ class OrderViewSet(ModelViewSet):
     
 class ProductImageViewSet(ModelViewSet):
     serializer_class = ProductImageSerializers
+    permission_classes = [IsAdminUser]
 
     def get_queryset(self):
         return ProductImage.objects.filter(product_id=self.kwargs['product_pk'])

@@ -74,6 +74,12 @@ class AddCartItemSerializers(serializers.ModelSerializer):
         if not Product.objects.filter(pk=value).exists():
             raise serializers.ValidationError('No product with the given id found')
         return value
+    
+    def validate(self, data):
+        cart_id = self.context['cart_id']
+        if not Cart.objects.filter(pk=cart_id).exists():
+            raise serializers.ValidationError('No cart with the given cart_id found')
+        return data
 
     def save(self, **kwargs):
         cart_id = self.context['cart_id']
