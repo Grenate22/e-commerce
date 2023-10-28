@@ -2,6 +2,7 @@ from django.shortcuts import render,get_object_or_404
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.decorators import api_view,action
 from rest_framework.filters import SearchFilter,OrderingFilter
 from rest_framework.viewsets import ModelViewSet,GenericViewSet
@@ -14,6 +15,7 @@ from .serializers import ProductSerializers, CollectionSerializers, ReviewSerial
 from .filters import ProductFilter
 from .pagination import DefaultPagination
 from .permissions import IsAdminOrReadOnly
+from .task import notify_me
 
 
 class ProductViewset(ModelViewSet):
@@ -34,6 +36,12 @@ class ProductViewset(ModelViewSet):
     #     if collection_id is not None:
     #         queryset = queryset.filter(collection_id=collection_id)
     #     return queryset
+    def perform_create(self,request, *args, **kwargs):
+        instance = self.get_object()
+        notify_me.delay(instance.unit_price)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
 
     def get_serializer_context(self):
         return {'request': self.request}

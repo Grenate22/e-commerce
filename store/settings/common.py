@@ -174,13 +174,13 @@ SIMPLE_JWT = {
 }
 
 
-CELERY_BEAT_SCHEDULE = {
-    'notify_customers': {
-        'task': 'playground.task.notify_customers',
-        'schedule': 5,
-        'args': ['Hello world'],
-    }
-}
+# CELERY_BEAT_SCHEDULE = {
+#     'notify_customers': {
+#         'task': 'playground.task.notify_customers',
+#         'schedule': 5,
+#         'args': ['Hello world'],
+#     }
+# }
 
 LOGGING = {
     'version':1,
@@ -207,4 +207,11 @@ LOGGING = {
         }
     }
 
+}
+
+SWAGGER_SETTINGS = {
+    'Default': [
+        'drf_yasg.inspectors.DjangoResponsePagination',
+        'drf_yasg.inspectors.CoreApiCompactInspector',
+    ]
 }
