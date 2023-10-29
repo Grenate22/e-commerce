@@ -9,4 +9,4 @@ def send_welcome_email(user_email,user_firstname):
         template_name = 'core/welcome_email.html',
         context = {'name':user_firstname }
     )
-    message.send()
+    message.send([user_email])
