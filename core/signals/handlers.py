@@ -11,4 +11,4 @@ def on_order_created(sender, **kwargs):
 @receiver(user_registered)
 def send_welcome_email(sender, user, request, **kwargs):
     from ..tasks import send_welcome_email
-    send_welcome_email.delay(user.email)
+    send_welcome_email.delay(user.email,user.first_name)
