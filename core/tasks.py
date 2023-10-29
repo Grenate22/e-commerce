@@ -6,7 +6,7 @@ from django.template.loader import get_template
 def send_welcome_email(user_email):
     subject = 'Confirmation instructions for Grenate store'
 
-    html_message = get_template('core/Welcome_email.html').render()
+    html_message = get_template('core/welcome_email.html').render()
 
     email = EmailMessage(
         subject,
