@@ -23,9 +23,11 @@ class ProductImageSerializers(serializers.ModelSerializer):
 
 class ProductSerializers(serializers.ModelSerializer):
     images = ProductImageSerializers(many=True, read_only=True)
+    image_url = serializers.ListField(
+        child=serializers.ImageField(allow_empty_file=False, use_url=False),write_only=True)
     class Meta:
         model = Product
-        fields = ['id','title','slug','description','price','price_with_tax','inventory','collection','images']
+        fields = ['id','title','slug','description','price','price_with_tax','inventory','collection','images',"image_url"]
 
    # if i want the collection to have an hyperlink 
     # collection = serializers.HyperlinkedRelatedField(
@@ -39,9 +41,13 @@ class ProductSerializers(serializers.ModelSerializer):
         return product.unit_price * Decimal(1.1)
     
     def create(self, validated_data):
+        print(validated_data)
+        image = validated_data.pop("image_url",[])
         product = Product(**validated_data)
         product.slug = product.title
         product.save()
+        for image in image:
+            ProductImage.objects.create(product=product, image=image)
         return product
     
 class ReviewSerializers(serializers.ModelSerializer):

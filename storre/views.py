@@ -18,13 +18,14 @@ from .permissions import IsAdminOrReadOnly
 from .task import notify_me
 
 
+
 class ProductViewset(ModelViewSet):
     queryset = Product.objects.prefetch_related('images').all()
     serializer_class = ProductSerializers
     filter_backends = [DjangoFilterBackend,SearchFilter,OrderingFilter]
     filterset_class = ProductFilter
     pagination_class = DefaultPagination
-    permission_classes = [IsAdminOrReadOnly]
+    # permission_classes = [IsAdminOrReadOnly]
     search_fields = ['title','description']
     ordering_fields = ['unit_price','last_update']
 
