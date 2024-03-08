@@ -1,7 +1,7 @@
 from django.shortcuts import render,get_object_or_404
-from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count
+from drf_spectacular.utils import extend_schema,OpenApiResponse,OpenApiExample
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.decorators import api_view,action
 from rest_framework.filters import SearchFilter,OrderingFilter
@@ -10,83 +10,57 @@ from rest_framework.mixins import CreateModelMixin,RetrieveModelMixin,DestroyMod
 from rest_framework.permissions import IsAuthenticated,IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
+from django.http import Http404
+from rest_framework.parsers import MultiPartParser,FileUploadParser
 from .models import Product, Collection,OrderItem, Review, Cart, CartItem,Customer,Order,ProductImage
 from .serializers import ProductSerializers, CollectionSerializers, ReviewSerializers, CartSerializers,CartItemSerializers,AddCartItemSerializers,UpdateCartItemSerializers,CustomerSerializers,OrderSerializers,CreateOrderSerializers,UpdateOrderSerializers,ProductImageSerializers
 from .filters import ProductFilter
 from .pagination import DefaultPagination
 from .permissions import IsAdminOrReadOnly
+from .customresponse import JsonResponse
 from .task import notify_me
 
 
-
-class ProductViewset(ModelViewSet):
-    queryset = Product.objects.prefetch_related('images').all()
-    serializer_class = ProductSerializers
-    filter_backends = [DjangoFilterBackend,SearchFilter,OrderingFilter]
-    filterset_class = ProductFilter
-    pagination_class = DefaultPagination
-    # permission_classes = [IsAdminOrReadOnly]
-    search_fields = ['title','description']
-    ordering_fields = ['unit_price','last_update']
-
-
-   #what happen underground of the filtering backend
-    # def get_queryset(self):
-    #     queryset = Product.objects.all()
-    #     collection_id = self.request.query_params.get('collection_id')
-    #     if collection_id is not None:
-    #         queryset = queryset.filter(collection_id=collection_id)
-    #     return queryset
-    def perform_create(self,request, *args, **kwargs):
-        instance = self.get_object()
-        notify_me.delay(instance.unit_price)
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
-
-
-    def get_serializer_context(self):
-        return {'request': self.request}
-    
-    def destroy(self, request, *args, **kwargs):
-        if OrderItem.objects.filter(product_id=kwargs['pk']).count() > 0:
-            return Response({'error':'product cannot be deleted'})
-        return super().destroy(request, *args, **kwargs)
-
-   
-# views for product using fbv here.
-# @api_view(['GET','POST'])
-# def product_list(request):
-#     if request.method == "GET":
-#         queryset = Product.objects.all()
-#         serializer = ProductSerializers(queryset, many=True, context={'request': request})
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-#     elif request.method == 'POST':
-#         serializer = ProductSerializers(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         serializer.save()
-#         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-# @api_view(['GET','PUT','DELETE'])
-# def product_details(request,id):
-#     product = get_object_or_404(Product,pk=id)
-#     if request.method == 'GET':
-#         serializer = ProductSerializers(product,context={'request': request})
-#         return Response(serializer.data)
-#     elif request.method == 'PUT':
-#         serializer = ProductSerializers(product, data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         serializer.save()
-#         return Response(serializer.data)
-#     elif request.method == 'DELETE':
-#         product.delete()
-#         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
 class CollectionViewset(ModelViewSet):
+    http_method_names = ['get','post','patch','delete','head','otpions']
     queryset = Collection.objects.annotate(products_count=Count('products')).all()
     serializer_class = CollectionSerializers
     permission_classes = [IsAdminOrReadOnly]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return JsonResponse(data=serializer.data,status="Success",statuscode=status.HTTP_201_CREATED,msg="Collection created",
+                            headers=headers)
     
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return JsonResponse(data=serializer.data,status="Success",statuscode=status.HTTP_200_OK,msg="Collection list")
+    
+    @extend_schema(
+        summary="Retrieve an instance of collection", 
+        responses={
+            200: OpenApiResponse(response=CollectionSerializers,
+                                 description='Retrieved. Retrieve an instance of collection'),
+            404: OpenApiResponse(response=CollectionSerializers, description='Not Found (Collection not found)'),
+        },
+    )
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return JsonResponse(data=serializer.data,status="Success", statuscode=status.HTTP_200_OK,msg="Collection Retrieved")
+        except Http404:
+            return JsonResponse(msg="Collection not found",status="Fail",statuscode=status.HTTP_404_NOT_FOUND)
+
+
     def delete(self, request,pk):
         collection = get_object_or_404(Collection.objects.annotate(products_count=Count('products')).all(),pk=pk)
         if collection.products.count() > 0:
@@ -95,43 +69,42 @@ class CollectionViewset(ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class ProductViewset(ModelViewSet):
+    queryset = Product.objects.prefetch_related('images').all()
+    serializer_class = ProductSerializers
+    parser_classes = [MultiPartParser,FileUploadParser]
+    filter_backends = [DjangoFilterBackend,SearchFilter,OrderingFilter]
+    filterset_class = ProductFilter
+    pagination_class = DefaultPagination
+    lookup_field = "slug"
+    # permission_classes = [IsAdminOrReadOnly]
+    search_fields = ['title','description']
+    ordering_fields = ['unit_price','last_update']
 
-#cbv for collection 
-# class CollectionList(ListCreateAPIView):
-#     queryset = Collection.objects.annotate(products_count=Count('products')).all()
-#     serializer_class = CollectionSerializers
-
-# class CollectionDetail(RetrieveUpdateDestroyAPIView):
-#     queryset = Collection.objects.annotate(products_count=Count('products')).all()
-#     serializer_class = CollectionSerializers
-
-#     def delete(self, request,pk):
-#         collection = get_object_or_404(Collection.objects.annotate(products_count=Count('products')).all(),pk=pk)
-#         if collection.products.count() > 0:
-#             return Response({'error':'collection cannot be deleted'})
-#         collection.delete()
-#         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-#my code for fbv for get of object ,put and delete
-# @api_view(['GET','PUT','DELETE'])
-# def collection_details(request,pk):
-
-#     collection = get_object_or_404(Collection.objects.annotate(products_count=Count('products')).all(),pk=pk)
-#     if request.method == 'GET':
-#         serializer = CollectionSerializers(collection)
-#         return Response(serializer.data)
-#     elif request.method == 'PUT':
-#         serializer = CollectionSerializers(data=request.data)
-#         return Response(serializer.data)
-#     elif request.method == 'DELETE':
-#         if collection.products.count() > 0:
-#             return Response({'error':'collection cannot be deleted'})
-#         collection.delete()
-#         return Response(status=status.HTTP_204_NO_CONTENT)
+    @extend_schema(
+        summary="Retrieve an instance of Product", 
+        responses={
+            200: OpenApiResponse(response=ProductSerializers,
+                                 description='Retrieved. Retrieve an instance of Product'),
+            404: OpenApiResponse(response=ProductSerializers, description='Not Found (Product not found)'),
+        },
+    )
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return JsonResponse(data=serializer.data,status="Success", statuscode=status.HTTP_200_OK,msg="Product Retrieved")
+        except Http404:
+            return JsonResponse(msg="Product not found",status="Fail",statuscode=status.HTTP_404_NOT_FOUND)
+    
+    def destroy(self, request, *args, **kwargs):
+        if OrderItem.objects.filter(product_id=kwargs['pk']).count() > 0:
+            return Response({'error':'product cannot be deleted'})
+        return super().destroy(request, *args, **kwargs)
 
 
 class ReviewViewset(ModelViewSet):
+    http_method_names = ['get','post','patch','delete','head','otpions']
     queryset = Review.objects.all()
     serializer_class = ReviewSerializers
 
@@ -162,25 +135,25 @@ class CartItemViewSet(ModelViewSet):
     def get_queryset(self):
         return CartItem.objects.select_related('cart','product').filter(cart_id=self.kwargs['cart_pk'])
     
-class CustomerViewSet(CreateModelMixin,RetrieveModelMixin,UpdateModelMixin,GenericViewSet):
-    queryset = Customer.objects.all()
-    serializer_class = CustomerSerializers
-    permission_classes = [IsAuthenticated]
+# class CustomerViewSet(CreateModelMixin,RetrieveModelMixin,UpdateModelMixin,GenericViewSet):
+#     queryset = Customer.objects.all()
+#     serializer_class = CustomerSerializers
+#     permission_classes = [IsAuthenticated]
     
-    @action(detail=False, methods=['GET','PUT'])
-    def me(self, request):
-        customer = Customer.objects.get(user_id=request.user.id)
-        if request.method == 'GET':
-            serializer = CustomerSerializers(customer)
-            return Response(serializer.data)
-        elif request.method == 'PUT':
-            serializer = CustomerSerializers(customer, data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data)
+#     @action(detail=False, methods=['GET','PUT'])
+#     def me(self, request):
+#         customer = Customer.objects.get(user_id=request.user.id)
+#         if request.method == 'GET':
+#             serializer = CustomerSerializers(customer)
+#             return Response(serializer.data)
+#         elif request.method == 'PUT':
+#             serializer = CustomerSerializers(customer, data=request.data)
+#             serializer.is_valid(raise_exception=True)
+#             serializer.save()
+#             return Response(serializer.data)
         
 class OrderViewSet(ModelViewSet):
-    http_method_names = ['get','post','patch','delete','head','otpions']
+    http_method_names = ['get','post','patch','head','otpions']
 
     def get_permissions(self):
         if self.request.method in ['PATCH','DELETE']:
@@ -208,14 +181,4 @@ class OrderViewSet(ModelViewSet):
             return Order.objects.prefetch_related('items__product').all()
         customer_id =Customer.objects.only('id').get(user_id=user.id)
         return Order.objects.prefetch_related('items__product').filter(customer_id=customer_id)
-    
-class ProductImageViewSet(ModelViewSet):
-    serializer_class = ProductImageSerializers
-    permission_classes = [IsAdminUser]
-
-    def get_queryset(self):
-        return ProductImage.objects.filter(product_id=self.kwargs['product_pk'])
-    
-    def get_serializer_context(self):
-        return {'product_id':self.kwargs['product_pk']}
     

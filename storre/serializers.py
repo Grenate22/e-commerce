@@ -21,13 +21,15 @@ class ProductImageSerializers(serializers.ModelSerializer):
         model = ProductImage
         fields = ['id','image']
 
-class ProductSerializers(serializers.ModelSerializer):
+class ProductSerializers(serializers.HyperlinkedModelSerializer):
     images = ProductImageSerializers(many=True, read_only=True)
+    # image_url =serializers.ImageField(allow_empty_file=False, use_url=False ,write_only=True)
     image_url = serializers.ListField(
         child=serializers.ImageField(allow_empty_file=False, use_url=False),write_only=True)
     class Meta:
         model = Product
         fields = ['id','title','slug','description','price','price_with_tax','inventory','collection','images',"image_url"]
+        
 
    # if i want the collection to have an hyperlink 
     # collection = serializers.HyperlinkedRelatedField(

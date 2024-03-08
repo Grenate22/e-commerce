@@ -1,0 +1,49 @@
+version: "3"
+
+services:
+    django:
+      build: .
+      container_name: django
+      command: >
+        sh -c "python3 manage.py migrate &&
+                python3 manage.py runserver 0.0.0.0:8000"
+      ports:
+        - "8000:8000" 
+      volumes:
+        - .:/app
+      depends_on:
+        - pgdb
+        - db
+        - redis
+
+    celery:
+      build: .
+      command: celery -A worker -1 INFO
+      volumes:
+        - .:/app
+      depends_on:
+        - django
+        - redis
+
+    db:
+      image: mysql:latest
+      volumes:
+      - mysql-data:/var/lib/mysql
+      container_name: db
+
+
+
+    pgdb:
+      image: postgres
+      container_name: pgdb
+      volumes:
+        - pgdata:/var/lib/postgresql/data
+
+    redis:
+      image: "redis:alpine"
+
+volumes:
+    pgdata:
+    mysql-data: {}
+
+  

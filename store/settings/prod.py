@@ -10,7 +10,7 @@ from .common import *
 DEBUG = False
 SECRET_KEY = env('SECRET_KEY')
 
-ALLOWED_HOSTS = ['grenatebuy-prod-ba2fdac05efc.herokuapp.com']
+ALLOWED_HOSTS = ['*']
 
 DATABASES = {
     'default': dj_database_url.config()
